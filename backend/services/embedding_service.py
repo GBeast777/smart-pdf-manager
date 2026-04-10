@@ -1,75 +1,32 @@
 import numpy as np
-import torch
-from transformers import AutoTokenizer, AutoModel
-import logging
+import requests
+import os
 
-# We use transformers directly to avoid sentence-transformers' dependency on scipy/scikit-learn 
-# which crashes on Python 3.14 alpha builds.
+HF_API_URL = "https://api-inference.huggingface.co/pipeline/feature-extraction/sentence-transformers/all-MiniLM-L6-v2"
+HF_API_KEY = os.getenv("HF_API_KEY")
 
-MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
-_tokenizer = None
-_model = None
-
-def get_model():
-    global _tokenizer, _model
-    if _model is None:
-        logging.info(f"Loading base Transformers model '{MODEL_NAME}'...")
-        _tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-        _model = AutoModel.from_pretrained(MODEL_NAME)
-        _model.eval()
-    return _tokenizer, _model
+headers = {
+    "Authorization": f"Bearer {HF_API_KEY}"
+}
 
 def generate_embedding(text: str) -> np.ndarray:
-    """
-    Generates a dense vector embedding for the given text using mean pooling.
-    """
-    tokenizer, model = get_model()
-    inputs = tokenizer(text, padding=True, truncation=True, return_tensors="pt", max_length=512)
-    with torch.no_grad():
-        outputs = model(**inputs)
-        
-    # Mean pooling
-    attention_mask = inputs['attention_mask']
-    token_embeddings = outputs.last_hidden_state
-    input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
+    response = requests.post(HF_API_URL, headers=headers, json=text)
+    embedding = np.array(response.json()[0])
     
-    sum_embeddings = torch.sum(token_embeddings * input_mask_expanded, 1)
-    sum_mask = torch.clamp(input_mask_expanded.sum(1), min=1e-9)
-    
-    embedding = (sum_embeddings / sum_mask).squeeze().numpy()
-    
-    # Explicitly do L2 normalization for cosine similarity
+    # Normalize
     norm = np.linalg.norm(embedding)
     if norm > 0:
         embedding = embedding / norm
     
-    return np.ascontiguousarray(embedding, dtype=np.float32)
+    return embedding.astype(np.float32)
 
 def generate_embeddings_batch(texts: list[str]) -> np.ndarray:
-    """
-    Generates embeddings for a batch of texts.
-    """
-    if not texts:
-        return np.array([])
-        
-    tokenizer, model = get_model()
-    inputs = tokenizer(texts, padding=True, truncation=True, return_tensors="pt", max_length=512)
+    response = requests.post(HF_API_URL, headers=headers, json=texts)
+    embeddings = np.array(response.json())
     
-    with torch.no_grad():
-        outputs = model(**inputs)
-        
-    attention_mask = inputs['attention_mask']
-    token_embeddings = outputs.last_hidden_state
-    input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
-    
-    sum_embeddings = torch.sum(token_embeddings * input_mask_expanded, 1)
-    sum_mask = torch.clamp(input_mask_expanded.sum(1), min=1e-9)
-    
-    embeddings = (sum_embeddings / sum_mask).numpy()
-    
-    # Explicitly do L2 normalization for cosine similarity on batch
+    # Normalize batch
     norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
     norms[norms == 0] = 1e-12
     embeddings = embeddings / norms
     
-    return np.ascontiguousarray(embeddings, dtype=np.float32)
+    return embeddings.astype(np.float32)
