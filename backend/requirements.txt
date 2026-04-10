@@ -20,3 +20,4 @@ uvicorn==0.42.0
 torch --index-url https://download.pytorch.org/whl/cpu
 transformers
 python-multipart
+google-generativeai
