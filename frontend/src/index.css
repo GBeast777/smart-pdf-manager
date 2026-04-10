@@ -1,0 +1,62 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-light text-dark font-sans antialiased;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* Ensure touch targets are at least 44px */
+  button, a, [role="button"], input[type="checkbox"] {
+    min-height: 2.75rem; /* 44px */
+    min-width: 2.75rem;
+  }
+
+  /* Allow inline elements to be smaller when explicitly set */
+  .min-h-auto { min-height: auto !important; }
+  .min-w-auto { min-width: auto !important; }
+
+  /* Safe area insets for notched devices */
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+}
+
+/* Custom scrollbar for better aesthetics */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-300 rounded-full;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-400;
+}
+
+/* Hide scrollbar on mobile nav */
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Tap animation for mobile */
+@media (hover: none) {
+  .tap-highlight:active {
+    transform: scale(0.97);
+    opacity: 0.9;
+  }
+}
